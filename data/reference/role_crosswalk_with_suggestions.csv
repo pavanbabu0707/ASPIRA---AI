@@ -1,0 +1,34 @@
+raw_title,canonical_role,onet_code,suggested_onet_code,suggested_onet_title,match_score,onet_source
+"Developer, full-stack","Developer, full-stack",,15-1252.00,Software Developers,63.333333333333336,Occupation Data
+"Developer, back-end","Developer, back-end",,15-1254.00,Web Developers,65.3125,Occupation Data
+"Developer, front-end","Developer, front-end",,15-1254.00,Web Developers,63.333333333333336,Occupation Data
+"Developer, desktop or enterprise applications","Developer, desktop or enterprise applications",43-9031.00,43-9031.00,Desktop Publishers,85.5,Occupation Data
+Other (please specify):,Other (please specify):,11-9013.00,11-9013.00,"Farmers, Ranchers, and Other Agricultural Managers",85.5,Occupation Data
+"Developer, mobile","Developer, mobile",49-3042.00,49-3042.00,"Mobile Heavy Equipment Mechanics, Except Engines",85.5,Occupation Data
+Engineering manager,Engineering manager,11-9041.00,11-9041.00,Architectural and Engineering Managers,90.0,Occupation Data
+Student,Student,,13-2051.00,Financial and Investment Analysts,65.76923076923076,Occupation Data
+"Developer, embedded applications or devices","Developer, embedded applications or devices",,15-1254.00,Web Developers,70.43478260869566,Occupation Data
+Data scientist or machine learning specialist,Data scientist or machine learning specialist,15-2051.00,15-2051.00,Data Scientists,86.89655172413794,Occupation Data
+DevOps specialist,DevOps specialist,,13-1071.00,Human Resources Specialists,75.48387096774194,Occupation Data
+Academic researcher,Academic researcher,,19-3022.00,Survey Researchers,64.86486486486487,Occupation Data
+Research & Development role,Research & Development role,11-9041.01,11-9041.01,Biofuels/Biodiesel Technology and Product Development Managers,85.5,Occupation Data
+"Senior Executive (C-Suite, VP, etc.)","Senior Executive (C-Suite, VP, etc.)",43-6011.00,43-6011.00,Executive Secretaries and Executive Administrative Assistants,85.5,Occupation Data
+"Engineer, data","Engineer, data",15-1243.01,15-1243.01,Data Warehousing Specialists,85.5,Occupation Data
+Cloud infrastructure engineer,Cloud infrastructure engineer,,41-9031.00,Sales Engineers,72.0,Occupation Data
+"Developer, game or graphics","Developer, game or graphics",29-1299.00,29-1299.00,"Healthcare Diagnosing or Treating Practitioners, All Other",85.5,Occupation Data
+Data or business analyst,Data or business analyst,13-1011.00,13-1011.00,"Agents and Business Managers of Artists, Performers, and Athletes",85.5,Occupation Data
+System administrator,System administrator,15-1244.00,15-1244.00,Network and Computer Systems Administrators,85.5,Occupation Data
+Project manager,Project manager,15-1299.09,15-1299.09,Information Technology Project Managers,90.0,Occupation Data
+"Developer, QA or test","Developer, QA or test",29-1299.00,29-1299.00,"Healthcare Diagnosing or Treating Practitioners, All Other",85.5,Occupation Data
+Security professional,Security professional,33-1091.00,33-1091.00,First-Line Supervisors of Security Workers,85.5,Occupation Data
+Product manager,Product manager,11-9041.01,11-9041.01,Biofuels/Biodiesel Technology and Product Development Managers,85.5,Occupation Data
+"Engineer, site reliability","Engineer, site reliability",11-9199.11,11-9199.11,Brownfield Redevelopment Specialists and Site Managers,85.5,Occupation Data
+Educator,Educator,25-9021.00,25-9021.00,Farm and Home Management Educators,90.0,Occupation Data
+Scientist,Scientist,15-1221.00,15-1221.00,Computer and Information Research Scientists,90.0,Occupation Data
+Developer Experience,Developer Experience,,15-1254.00,Web Developers,61.47058823529411,Occupation Data
+Blockchain,Blockchain,15-1299.07,15-1299.07,Blockchain Engineers,90.0,Occupation Data
+Hardware Engineer,Hardware Engineer,17-2061.00,17-2061.00,Computer Hardware Engineers,90.0,Occupation Data
+Designer,Designer,15-1255.00,15-1255.00,Web and Digital Interface Designers,90.0,Occupation Data
+Database administrator,Database administrator,15-1242.00,15-1242.00,Database Administrators,97.77777777777777,Occupation Data
+Developer Advocate,Developer Advocate,,11-3131.00,Training and Development Managers,60.67741935483871,Occupation Data
+Marketing or sales professional,Marketing or sales professional,11-2021.00,11-2021.00,Marketing Managers,85.5,Occupation Data

@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: careerpath-ai
+Version: 0.0.1
+Summary: CareerPath AI training pipeline
+Author: Team CareerPath AI
+Requires-Python: >=3.10
+Requires-Dist: pandas>=2.2.0
+Requires-Dist: pyarrow>=16.0.0
+Requires-Dist: numpy>=1.26.0
+Requires-Dist: scikit-learn>=1.5.0
+Requires-Dist: tqdm>=4.66.0
+Requires-Dist: sentence-transformers>=3.0.0
+Requires-Dist: faiss-cpu>=1.8.0
+Requires-Dist: matplotlib>=3.8.0
