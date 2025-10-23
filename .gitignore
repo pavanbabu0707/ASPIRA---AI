@@ -1,0 +1,13 @@
+# Python virtual environment
+# This is the most important one to fix your specific error
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# IDE specific files (optional but good practice)
+.vscode/
+
+# Files for environment variables (sensitive data)
+.env
