@@ -1,5 +1,9 @@
 # scripts/query_hybrid.py
+# --- path shim so `src` is importable when running from scripts/ ---
 from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+# -------------------------------------------------------------------
 import numpy as np
 import pandas as pd
 from src.models.hybrid import (
