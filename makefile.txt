@@ -1,4 +1,4 @@
-.PHONY: setup build_features fit_knn fit_kmeans ingest clean run
+    .PHONY: setup build_features fit_knn fit_kmeans ingest clean run
 
 PY := .venv/Scripts/python
 PIP := .venv/Scripts/pip
@@ -25,13 +25,3 @@ run:
 
 clean:
 	rm -rf dist build *.egg-info __pycache__ .pytest_cache
-
-streamlit:
-	.venv/Scripts/python -m streamlit run app/streamlit_app.py
-
-semantic:
-	.venv/Scripts/python -m streamlit run app/semantic_app.py
-
-skills:
-	.venv/Scripts/python -m streamlit run app/streamlit_skills.py
-
