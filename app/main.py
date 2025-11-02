@@ -1,4 +1,5 @@
 # app/main.py
+from app.api.routes import router as api_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -26,6 +27,9 @@ def create_app() -> FastAPI:
 
     # Ensure tables exist (uses your SQLite file)
     Base.metadata.create_all(bind=engine)
+
+    app.include_router(api_router)
+
 
     @app.get("/health")
     def health():
