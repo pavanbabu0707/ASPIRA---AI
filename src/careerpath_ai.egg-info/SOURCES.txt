@@ -10,3 +10,4 @@ src/features/build_training_view.py
 src/ingest/dummy_check.py
 src/models/fit_kmeans.py
 src/models/fit_knn.py
+src/models/hybrid.py
