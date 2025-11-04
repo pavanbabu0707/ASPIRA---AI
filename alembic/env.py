@@ -3,6 +3,10 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 from dotenv import load_dotenv
+from app.db.base import Base
+target_metadata = Base.metadata
+
+from app.db import models_extra
 
 # Load environment variables
 load_dotenv()
@@ -31,10 +35,11 @@ def run_migrations_offline():
 
 def run_migrations_online():
     connectable = engine_from_config(
-        {"sqlalchemy.url": db_url},
-        prefix="",
-        poolclass=pool.NullPool,
-    )
+    {"url": db_url},          
+    prefix="",
+    poolclass=pool.NullPool,
+)
+    
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
@@ -48,3 +53,5 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+
+

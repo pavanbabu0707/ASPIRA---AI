@@ -16,6 +16,9 @@ from app.models.career import Career  # noqa: F401
 from app.api.routes import router as api_router
 from app.api.survey_routes import router as survey_router
 from app.api.career_routes import router as career_router
+from app.api.nlp_routes import router as nlp_router
+from app.api.recommend_routes import router as recommend_router
+from app.api.job_routes import router as job_router
 
 # Seeder
 from app.db.seed import seed_careers
@@ -39,7 +42,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Ensure tables exist (uses your SQLite file from .env)
+    # Ensure tables exist (safe with SQLite; for strict migration control, rely on Alembic only)
     Base.metadata.create_all(bind=engine)
 
     # Auto-seed careers if empty
@@ -49,9 +52,13 @@ def create_app() -> FastAPI:
             print(f"[seed] inserted {inserted} career rows")
 
     # API routes
-    app.include_router(api_router)       # /health, /auth/register, /auth/login
-    app.include_router(survey_router)    # /survey/*
-    app.include_router(career_router)
+    app.include_router(api_router)        # /health, /auth/*
+    app.include_router(survey_router)     # /survey/*
+    app.include_router(career_router)     # /careers (list)
+    app.include_router(nlp_router)        # /nlp/resume/upload
+    app.include_router(recommend_router)  # /careers/recommend
+    app.include_router(job_router)           # /jobs/*
+
 
     return app
 
