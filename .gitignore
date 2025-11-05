@@ -1,18 +1,96 @@
-# Python virtual environment
-# This is the most important one to fix your specific error
-.venv/
+# =====================================
+# Aspira AI Project (.gitignore)
+# FastAPI + Streamlit + SQLite + Python venv
+# =====================================
 
-# Python cache files
+# --- Python ---
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 
-# IDE specific files (optional but good practice)
+# --- Virtual environment ---
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# --- Jupyter / IPython ---
+.ipynb_checkpoints/
+*.ipynb_save
+*.ipynb_checkpoints
+
+# --- Logs and Debug ---
+*.log
+logs/
+debug.log
+nohup.out
+
+# --- SQLite database and temp files ---
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# --- Alembic migrations cache ---
+alembic/__pycache__/
+alembic/versions/__pycache__/
+
+# --- OS / IDE / Editor stuff ---
+.DS_Store
+Thumbs.db
+.idea/
 .vscode/
+*.swp
+*.swo
 
-# Files for environment variables (sensitive data)
-.env
+# --- Streamlit cache ---
+.streamlit/
+**/.streamlit/
+.streamlit-cache/
+streamlit-cache/
 
-# SQLite temp files
-.db-shm
-.db-wal
-.db-journal
+# --- FastAPI runtime ---
+uvicorn.log
+*.pid
+*.sock
+
+# --- Data / uploads / artifacts ---
+uploads/
+data/
+tmp/
+*.tar.gz
+*.zip
+*.csv
+*.json
+
+# --- Model weights / embeddings (optional) ---
+*.pt
+*.pth
+*.h5
+*.npy
+*.npz
+
+# --- Node/npm (if ever used for UI) ---
+node_modules/
+package-lock.json
+npm-debug.log
+
+# --- OS metadata ---
+ehthumbs.db
+Desktop.ini
+
+# --- Git itself ---
+.gitignore
+.gitmodules
+
+# --- Backup files ---
+*~
+*.bak
+*.tmp
+
+# =====================================
+# END
+# =====================================
