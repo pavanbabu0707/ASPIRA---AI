@@ -1,171 +1,180 @@
 # app/api/job_routes.py
-import json
-import os
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from typing import List, Optional
-
-import numpy as np
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from sqlalchemy import insert, select
-from sqlalchemy.orm import Session
-
-from app.db.session import SessionLocal
-from app.db.models_extra import Job, Embedding, Resume
-from app.models.survey import SurveyResponse as Survey
+from sqlalchemy import select, delete
+from app.db.session import get_db, SessionLocal
+from app.db.models_extra import Job
 from app.nlp.embeddings import embed_texts, upsert_embedding, get_cached_embedding
-
-ALPHA = float(os.getenv("W_ALPHA", 0.55))  # content (resume/headline ↔ job text)
-BETA  = float(os.getenv("W_BETA",  0.25))  # survey ↔ job vector (reserved for future if you add a 5-dim vec on Job)
+import numpy as np
+import os, json, re
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
-# ---------- Schemas ----------
+# ---------------------------
+# Schemas
+# ---------------------------
+
 class JobIn(BaseModel):
     title: str
     company: Optional[str] = ""
     location: Optional[str] = ""
     description: str
-    skills: Optional[List[str]] = []
+    skills: List[str] = []
     source: Optional[str] = "manual"
 
-class BulkJobsIn(BaseModel):
+class JobsIn(BaseModel):
     jobs: List[JobIn]
 
-class RecommendIn(BaseModel):
+class JobsRecommendIn(BaseModel):
     user_id: str | int
-    headline: Optional[str] = ""
+    headline: str = Field("", description="Used if no resume")
     top_k: int = 10
     use_resume: bool = True
+    alpha: Optional[float] = None
+    beta: Optional[float] = None
+    gamma: Optional[float] = None
+    tau: Optional[float] = None
 
-# ---------- Helpers ----------
+
+# ---------------------------
+# Helper functions
+# ---------------------------
+
+ALPHA = float(os.getenv("WJ_ALPHA", "0.70"))
+BETA  = float(os.getenv("WJ_BETA",  "0.25"))
+GAMMA = float(os.getenv("WJ_GAMMA", "0.05"))
+TAU   = float(os.getenv("WJ_TAU",   "1.3"))
+TEMP  = float(os.getenv("WJ_TEMP",  "1.2"))
+
+_TOKEN_RE = re.compile(r"[a-zA-Z][a-zA-Z0-9+\-_.#]*")
+_STOP = {"a","an","and","the","of","in","on","to","for","with","by","at","from","or","as","is","are","be"}
+
 def _cos(a: np.ndarray, b: np.ndarray) -> float:
     if a.ndim == 2: a = a[0]
     if b.ndim == 2: b = b[0]
-    na = np.linalg.norm(a); nb = np.linalg.norm(b)
-    if na == 0 or nb == 0:
-        return 0.0
+    na, nb = float(np.linalg.norm(a)), float(np.linalg.norm(b))
+    if na == 0 or nb == 0: return 0.0
     return float(np.dot(a, b) / (na * nb))
 
-def _latest_survey_vec(s: Session, user_id) -> np.ndarray | None:
-    from sqlalchemy import desc
-    # try both string and int user_id
-    candidates = [str(user_id)]
-    try:
-        candidates.append(int(user_id))
-    except Exception:
-        pass
+def _skill_tokens(txt: str) -> set[str]:
+    toks = {t.lower() for t in _TOKEN_RE.findall(txt or "")}
+    return {t for t in toks if t not in _STOP and len(t) >= 2}
 
-    for uid in candidates:
-        q = s.execute(
-            select(Survey)
-            .where(Survey.user_id == uid)
-            .order_by(desc(getattr(Survey, "created_at", getattr(Survey, "id"))))
-        ).scalars().first()
-        if not q:
-            continue
+def _overlap(a: str, b: str) -> float:
+    A, B = _skill_tokens(a), _skill_tokens(b)
+    if not A or not B: return 0.0
+    return len(A & B) / len(A | B)
 
-        # tolerate multiple field names
-        for attr in ("answers", "responses", "response_vector", "vector"):
-            val = getattr(q, attr, None)
-            if val is None:
-                continue
-            try:
-                arr = val if isinstance(val, list) else json.loads(val)
-                v = np.array(arr, dtype=np.float32)
-                if v.shape[0] == 5:
-                    return v
-            except Exception:
-                continue
-    return None
+def _apply_sharpen(x: float, tau: float) -> float:
+    return float(max(x, 0.0) ** max(tau, 1.0))
 
-def _user_text(s: Session, user_id, headline: str, use_resume: bool) -> str:
-    if use_resume:
-        res = s.execute(select(Resume).where(Resume.user_id == str(user_id))).scalars().first()
-        if res and res.raw_text and len(res.raw_text.strip()) >= 20:
-            return res.raw_text
-    return (headline or "").strip()
 
-def _ensure_job_emb(s: Session, job_id: int, title: str, desc: str) -> np.ndarray:
-    vec = get_cached_embedding(s, "job", job_id)
-    if vec is not None:
-        return vec
-    text = f"{title}. {desc}".strip()
-    vec = embed_texts([text])[0]
-    upsert_embedding("job", job_id, vec, s=s)  # use SAME session
-    return vec
+# ---------------------------
+# Routes
+# ---------------------------
 
-# ---------- Endpoints ----------
 @router.post("/ingest")
-def ingest_jobs(payload: BulkJobsIn):
-    if not payload.jobs:
-        raise HTTPException(status_code=400, detail="No jobs provided")
-
+def ingest_jobs(payload: JobsIn):
+    """Ingest or update job postings and cache embeddings."""
     with SessionLocal() as s:
-        created = 0
+        inserted = 0
         for j in payload.jobs:
-            # Insert only columns that exist on your Job table
-            row = {
-                "title": j.title,
-                "company": j.company or "",
-                "location": j.location or "",
-                "description": j.description,
-            }
-            if hasattr(Job, "skills"):
-                row["skills"] = json.dumps(j.skills or [])
-            if hasattr(Job, "source"):
-                row["source"] = j.source or "manual"
+            job = s.execute(select(Job).where(Job.title == j.title, Job.company == j.company)).scalars().first()
+            if not job:
+                job = Job(title=j.title, company=j.company, location=j.location,
+                          description=j.description, skills=",".join(j.skills), source=j.source)
+                s.add(job)
+                s.flush()  # get job.id
+                inserted += 1
+            else:
+                job.location = j.location
+                job.description = j.description
+                job.skills = ",".join(j.skills)
+                job.source = j.source
 
-            res = s.execute(insert(Job).values(**row))
-            job_id = int(res.inserted_primary_key[0])
-            s.flush()  # make the PK visible within txn
-
-            # Precompute and store embedding using SAME session
-            _ensure_job_emb(s, job_id, j.title, j.description)
-            created += 1
+            # Create or update embedding for this job
+            text = f"{job.title}. {job.description or ''}".strip()
+            vec = embed_texts([text])[0]
+            upsert_embedding("job", job.id, vec, s=s)
 
         s.commit()
-    return {"ok": True, "created": created}
+        return {"ok": True, "inserted_or_updated": inserted, "total": len(payload.jobs)}
 
-@router.get("")
-def list_jobs():
-    with SessionLocal() as s:
-        rows = s.execute(select(Job)).scalars().all()
-        return [{"id": r.id, "title": r.title, "company": r.company, "location": r.location} for r in rows]
 
+# --- Hybrid job recommendations ---
 @router.post("/recommend")
-def recommend_jobs(payload: RecommendIn):
+def recommend_jobs(payload: JobsRecommendIn):
+    """Hybrid job recommender (resume/headline text + overlap)."""
+    from app.db.models_extra import Resume
+
+    a = ALPHA if payload.alpha is None else float(payload.alpha)
+    b = BETA  if payload.beta  is None else float(payload.beta)
+    g = GAMMA if payload.gamma is None else float(payload.gamma)
+    t = TAU   if payload.tau   is None else float(payload.tau)
+
     with SessionLocal() as s:
-        txt = _user_text(s, payload.user_id, payload.headline, payload.use_resume)
-        user_vec = embed_texts([txt])[0] if txt else None
-        survey_vec = _latest_survey_vec(s, payload.user_id)
+        # --- choose user text ---
+        user_text = ""
+        if payload.use_resume:
+            res = s.execute(select(Resume).where(Resume.user_id == str(payload.user_id))).scalars().first()
+            if res and res.raw_text and len(res.raw_text.strip()) >= 20:
+                user_text = res.raw_text
+        if not user_text:
+            user_text = (payload.headline or "").strip()
 
-        jobs = s.execute(select(Job)).scalars().all()
+        user_vec = embed_texts([user_text])[0] if user_text else None
+
+        jobs: List[Job] = s.execute(select(Job)).scalars().all()
         if not jobs:
-            raise HTTPException(status_code=404, detail="No jobs found")
+            raise HTTPException(status_code=404, detail="No jobs ingested")
 
-        scored = []
+        out = []
         for j in jobs:
-            content_sim = 0.0
-            if user_vec is not None:
-                jv = _ensure_job_emb(s, j.id, j.title, j.description or "")
-                content_sim = _cos(user_vec, jv)
+            cached = get_cached_embedding(s, "job", j.id)
+            if cached is None:
+                text = f"{j.title}. {j.description or ''}".strip()
+                vec = embed_texts([text])[0]
+                upsert_embedding("job", j.id, vec, s=s)
+                cached = vec
 
-            survey_aff = 0.0
-            # (future) if you add a 5-dim job vector, compute cosine(survey_vec, job_vec) here
+            content_sim = _cos(user_vec, cached) if user_vec is not None else 0.0
+            overlap = _overlap(user_text, f"{j.title}. {j.description or ''}") if user_text else 0.0
 
-            score = ALPHA * content_sim + BETA * survey_aff
-            scored.append({
+            raw = a * content_sim + g * overlap
+            final = _apply_sharpen(raw, t)
+
+            out.append({
                 "id": j.id,
                 "title": j.title,
                 "company": j.company,
                 "location": j.location,
-                "description": j.description,
-                "score": round(float(score), 4),
+                "score": float(final),
                 "content_sim": round(float(content_sim), 4),
-                "survey_aff": round(float(survey_aff), 4),
-                "skills": getattr(j, "skills", None),
+                "overlap": round(float(overlap), 4),
+                "source": j.source,
+                "description": j.description,
             })
 
-        scored.sort(key=lambda x: x["score"], reverse=True)
-        k = max(1, int(payload.top_k))
-        return {"ok": True, "items": scored[:k]}
+        # normalize + softmax
+        scores = np.array([r["score"] for r in out], dtype=np.float32)
+        mn, mx = float(scores.min()), float(scores.max())
+        norm = (scores - mn) / (mx - mn) if mx > mn else np.ones_like(scores)
+        exps = np.exp((scores - scores.max()) / max(TEMP, 1e-6))
+        conf = exps / exps.sum()
+
+        for i, r in enumerate(out):
+            r["norm_score"] = float(round(norm[i], 4))
+            r["confidence"] = float(round(conf[i], 4))
+            r["score"] = float(round(r["score"], 4))
+
+        out.sort(key=lambda x: x["score"], reverse=True)
+        return {
+            "ok": True,
+            "used_resume": bool(payload.use_resume and user_text),
+            "alpha": a,
+            "beta": b,
+            "gamma": g,
+            "tau": t,
+            "items": out[:max(1, payload.top_k)]
+        }
