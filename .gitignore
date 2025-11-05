@@ -11,3 +11,8 @@ __pycache__/
 
 # Files for environment variables (sensitive data)
 .env
+
+# SQLite temp files
+.db-shm
+.db-wal
+.db-journal
