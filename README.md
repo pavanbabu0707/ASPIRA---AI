@@ -50,7 +50,6 @@ Career Recommendation Engine
 Web Interface (Streamlit/Flask)     
 
 
-*(You can replace this diagram with a visual architecture image — e.g., `assets/architecture.png`)*  
 
 ---
 
