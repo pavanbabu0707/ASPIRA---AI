@@ -1,0 +1,93 @@
+# ASPIRA Conversational Intake — Integration Guide
+
+## Files
+```
+aspira_intake/
+├── conversation.py   # Question flow manager
+├── extractor.py      # LLM behavioral extraction
+├── router.py         # FastAPI routes
+└── intake.html       # Chat UI (serve as static file)
+```
+
+## 1. Install dependencies
+```bash
+pip install anthropic fastapi pydantic sentence-transformers
+```
+
+## 2. Set your API key
+```bash
+export ANTHROPIC_API_KEY=your_key_here
+```
+
+## 3. Mount the router in your existing FastAPI app
+
+```python
+# In your main.py or app/__init__.py
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from aspira_intake.router import intake_router
+
+app = FastAPI()
+
+# Mount the intake router
+app.include_router(intake_router, prefix="/intake", tags=["intake"])
+
+# Serve the chat UI
+app.mount("/static", StaticFiles(directory="aspira_intake"), name="static")
+
+# Redirect root to intake UI
+from fastapi.responses import FileResponse
+
+@app.get("/")
+async def serve_intake():
+    return FileResponse("aspira_intake/intake.html")
+```
+
+## 4. API Flow
+
+```
+POST /intake/start
+  → { session_id, question, turn: 1, total_turns: 4 }
+
+POST /intake/respond    { session_id, message }
+  → { session_id, question, turn, total_turns, is_last }
+  (call 3 times: turns 1, 2, 3)
+
+POST /intake/extract    { session_id, message }   ← final answer
+  → {
+      behavioral_profile: { risk_tolerance, motivation_type, ... },
+      form_fields: { skills, interests, ... },   ← feed to your /recommend
+      key_signals: [...],
+      recommended_career_clusters: [...],
+      confidence_score: 0.87,
+      transcript: [...]
+    }
+
+GET  /intake/session/{session_id}
+  → full session including transcript + profile (for research data)
+```
+
+## 5. Connect to your recommendation engine
+
+The `form_fields` from `/extract` are submitted directly to your existing
+`POST /recommend` endpoint via a hidden form. The field names match what
+your engine already expects.
+
+To add the new behavioral fields to your engine, start by just printing them
+and verifying the extraction quality before wiring them into your model.
+
+## 6. For research: saving transcripts
+
+Replace the in-memory `_sessions` dict in router.py with a DB write:
+
+```python
+# In router.py, after extraction:
+await db.execute(
+    "INSERT INTO intake_sessions VALUES (?, ?, ?, ?, ?)",
+    (session_id, json.dumps(transcript), json.dumps(profile),
+     datetime.utcnow(), True)
+)
+```
+
+Every session = one research data point. After 30+ sessions, you have
+enough to start comparing against Big Five psychometric scores.
